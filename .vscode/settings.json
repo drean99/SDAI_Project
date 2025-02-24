@@ -1,0 +1,7 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "SDAI_Project/lib/jade.jar",
+        "SDAI_Project/lib/TraCI4J-2.5-SNAPSHOT.jar"
+    ]
+}
