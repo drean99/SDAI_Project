@@ -1,103 +1,176 @@
-import Utility.MatrixCell;
-import Utility.CellType;
-import Utility.Reservation;
-import Utility.ReservationTable;
-import Utility.TimeSlot;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.TickerBehaviour;
 import jade.lang.acl.ACLMessage;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 public class IntersectionAgent extends Agent {
-    private String intersectionID;
-    private ReservationTable reservationTable;
-    // La cella dell'incrocio può essere determinata in base all'ID o impostata separatamente
-    private MatrixCell cella;
-    
-    protected void setup() {
-        // Inizializzazione dell'incrocio
-        intersectionID = getLocalName(); // per esempio "IntersectionAgent_3_4"
-        reservationTable = new ReservationTable();
+
+    private final long TIMEOUT = 5000; // Timeout in millisecondi per considerare scaduta una richiesta
+    // Lista di richieste pendenti
+    private List<Request> pendingRequests = new ArrayList<>();
+    // Richiesta attualmente autorizzata
+    private Request currentRequest = null;
+
+    // Classe interna per rappresentare una richiesta di passaggio
+    private class Request {
+        String vehicleID;
+        String arrivalLane;
+        String turningIntention;
+        long timestamp; // in millisecondi
+
+        public Request(String vehicleID, String arrivalLane, String turningIntention, long timestamp) {
+            this.vehicleID = vehicleID;
+            this.arrivalLane = arrivalLane.toLowerCase();
+            this.turningIntention = turningIntention.toLowerCase();
+            this.timestamp = timestamp;
+        }
         
-        // In una versione più completa, potremmo estrarre la cella dall'ID oppure
-        // riceverla dall'ambiente. Qui la impostiamo come dummy.
-        cella = new MatrixCell(5, 5, CellType.INTERSECTION); // esempio
-        
-        addBehaviour(new ProcessReservationBehaviour());
+        @Override
+        public String toString() {
+            return "[" + vehicleID + ", " + arrivalLane + ", " + turningIntention + ", " + timestamp + "]";
+        }
     }
-    
-    private class ProcessReservationBehaviour extends CyclicBehaviour {
+
+    @Override
+    protected void setup() {
+        System.out.println(getLocalName() + " avviato come IntersectionAgent.");
+        addBehaviour(new ProcessRequestsBehaviour());
+        addBehaviour(new QueueProcessingBehaviour(this, 500)); // Elabora la coda ogni 500ms
+    }
+
+    // Comportamento per ricevere le richieste e aggiungerle alla coda
+    private class ProcessRequestsBehaviour extends CyclicBehaviour {
+        @Override
         public void action() {
             ACLMessage msg = receive();
             if (msg != null) {
-                // Estrai la richiesta e verifica la disponibilità applicando le policy di precedenza
-                Reservation richiesta = parseReservation(msg.getContent());
-                boolean disponibile = verificaDisponibilità(richiesta);
-                ACLMessage reply = msg.createReply();
-                if (disponibile) {
-                    reservationTable.add(richiesta);
-                    reply.setPerformative(ACLMessage.CONFIRM);
-                    reply.setContent("Prenotazione confermata per " + richiesta.getVehicleID());
-                } else {
-                    reply.setPerformative(ACLMessage.REFUSE);
-                    reply.setContent("Prenotazione rifiutata per " + richiesta.getVehicleID());
+                // Formato atteso: "REQUEST_PASS,vehicleID,arrivalLane,turningIntention,timestamp"
+                String[] parts = msg.getContent().split(",");
+                if(parts.length < 5) {
+                    System.out.println("Formato messaggio non valido: " + msg.getContent());
+                    return;
                 }
-                send(reply);
+                String vehicleID = parts[1].trim();
+                String arrivalLane = parts[2].trim().toLowerCase();
+                String turningIntention = parts[3].trim().toLowerCase();
+                long timestamp;
+                try {
+                    timestamp = Long.parseLong(parts[4].trim());
+                } catch (NumberFormatException e) {
+                    timestamp = System.currentTimeMillis();
+                }
+                Request newReq = new Request(vehicleID, arrivalLane, turningIntention, timestamp);
+                if (!containsRequest(vehicleID)) {
+                    pendingRequests.add(newReq);
+                    System.out.println("IntersectionAgent: richiesta aggiunta da " + vehicleID + " -> " + newReq);
+                } else {
+                    System.out.println("IntersectionAgent: richiesta già presente per " + vehicleID);
+                }
             } else {
                 block();
             }
         }
     }
-    
-    /**
-     * Verifica la disponibilità della richiesta confrontandola con le prenotazioni esistenti.
-     * La logica qui dovrebbe includere:
-     *   1. Policy basata sulla priorità: una richiesta con priorità maggiore (ad esempio, CnR)
-     *      deve essere considerata prima.
-     *   2. Policy basata sulla corsia: se nella stessa corsia esiste già un veicolo in attesa,
-     *      la richiesta viene rifiutata.
-     *   3. Policy FCFS: se le richieste hanno la stessa priorità e sono in corsie diverse,
-     *      viene servita quella arrivata per prima.
-     * La logica specifica è delegata a ReservationTable.checkAvailability().
-     */
-    public boolean verificaDisponibilità(Reservation richiesta) {
-        return reservationTable.checkAvailability(richiesta);
-    }
-    
-    /**
-     * Interpreta il contenuto del messaggio per creare un oggetto Reservation.
-     * Formato atteso: "vehicleID,priority,arrivalLane,turningIntention,startTime,endTime,cellRow,cellCol"
-     */
-    private Reservation parseReservation(String content) {
-        String[] parts = content.split(",");
-        if (parts.length < 8) {
-            // Fallback: se il formato non è corretto, creiamo una Reservation di default usando:
-            // - vehicleID: il contenuto intero come identificativo,
-            // - cell: la cella corrente dell'incrocio (cella dummy impostata in setup),
-            // - timeSlot: default [0,0],
-            // - priority: 0, arrivalLane: "unknown", turningIntention: "straight".
-            return new Reservation(
-                content,
-                cella,
-                new TimeSlot(0, 0),
-                0,
-                "unknown",
-                "straight"
-            );
-        } else {
-            String vehicleID = parts[0].trim();
-            int priority = Integer.parseInt(parts[1].trim());
-            String arrivalLane = parts[2].trim();
-            String turningIntention = parts[3].trim();
-            double startTime = Double.parseDouble(parts[4].trim());
-            double endTime = Double.parseDouble(parts[5].trim());
-            int cellRow = Integer.parseInt(parts[6].trim());
-            int cellCol = Integer.parseInt(parts[7].trim());
-            
-            TimeSlot timeSlot = new TimeSlot(startTime, endTime);
-            MatrixCell cell = new MatrixCell(cellRow, cellCol, CellType.ROAD); // oppure il tipo appropriato
-            
-            // Costruisce la Reservation con tutte le informazioni necessarie
-            return new Reservation(vehicleID, cell, timeSlot, priority, arrivalLane, turningIntention);
+
+    // Comportamento che processa periodicamente la coda delle richieste
+    private class QueueProcessingBehaviour extends TickerBehaviour {
+        public QueueProcessingBehaviour(Agent a, long period) {
+            super(a, period);
         }
+        @Override
+        protected void onTick() {
+            long now = System.currentTimeMillis();
+            
+            // Ordina la lista in base al timestamp (FCFS)
+            Collections.sort(pendingRequests, Comparator.comparingLong(r -> r.timestamp));
+            
+            // Se la richiesta corrente è attiva e ha superato il timeout, la rimuoviamo
+            if (currentRequest != null && now - currentRequest.timestamp > TIMEOUT) {
+                System.out.println("IntersectionAgent: Timeout per " + currentRequest.vehicleID);
+                sendEnd(currentRequest.vehicleID);
+                currentRequest = null;
+            }
+            
+            // Se non c'è una richiesta attiva, la più vecchia viene autorizzata
+            if (currentRequest == null && !pendingRequests.isEmpty()) {
+                currentRequest = pendingRequests.remove(0);
+                sendGo(currentRequest.vehicleID);
+                System.out.println("IntersectionAgent: " + currentRequest.vehicleID + " autorizzato (FCFS).");
+            }
+            
+            // Se esiste una richiesta attiva, controlliamo se tra quelle pendenti c'è una che proviene dalla destra
+            if (currentRequest != null) {
+                Request candidate = null;
+                for (Request req : pendingRequests) {
+                    // Se la richiesta pendente viene dalla destra rispetto a quella attiva, consideriamola candidata
+                    if (isRightOf(req.arrivalLane, currentRequest.arrivalLane)) {
+                        candidate = req;
+                        break;
+                    }
+                }
+                if (candidate != null) {
+                    System.out.println("IntersectionAgent: " + candidate.vehicleID + " (da " + candidate.arrivalLane +
+                        ") ha la precedenza rispetto a " + currentRequest.vehicleID +
+                        " (da " + currentRequest.arrivalLane + ").");
+                    sendStop(currentRequest.vehicleID);
+                    pendingRequests.remove(candidate);
+                    currentRequest = candidate;
+                    sendGo(currentRequest.vehicleID);
+                }
+            }
+        }
+    }
+
+    private boolean containsRequest(String vehicleID) {
+        for (Request req : pendingRequests) {
+            if (req.vehicleID.equalsIgnoreCase(vehicleID))
+                return true;
+        }
+        if (currentRequest != null && currentRequest.vehicleID.equalsIgnoreCase(vehicleID))
+            return true;
+        return false;
+    }
+
+    // Verifica se il lato della nuova richiesta è quello a destra rispetto al lato della richiesta corrente
+    private boolean isRightOf(String laneNew, String laneCurrent) {
+        return laneNew.equalsIgnoreCase(getRightLane(laneCurrent));
+    }
+
+    private String getRightLane(String lane) {
+        switch(lane.toLowerCase()) {
+            case "north": return "east";
+            case "east":  return "south";
+            case "south": return "west";
+            case "west":  return "north";
+            default: return "";
+        }
+    }
+
+    private void sendStop(String vehicleID) {
+        ACLMessage stopMsg = new ACLMessage(ACLMessage.INFORM);
+        stopMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
+        stopMsg.setContent("STOP");
+        send(stopMsg);
+        System.out.println("IntersectionAgent: inviata STOP a " + vehicleID);
+    }
+
+    private void sendEnd(String vehicleID) {
+        ACLMessage stopMsg = new ACLMessage(ACLMessage.INFORM);
+        stopMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
+        stopMsg.setContent("END");
+        send(stopMsg);
+        System.out.println("IntersectionAgent: inviato END a " + vehicleID);
+    }
+
+    private void sendGo(String vehicleID) {
+        ACLMessage goMsg = new ACLMessage(ACLMessage.CONFIRM);
+        goMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
+        goMsg.setContent("GO");
+        send(goMsg);
+        System.out.println("IntersectionAgent: inviato GO a " + vehicleID);
     }
 }

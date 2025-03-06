@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <!-- Definizione di un tipo di veicolo di base -->
+    <vType id="carRed" vClass="passenger" color="1,0,0" accel="2.6" decel="4.5" length="5.0" 
+           minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
+
+    <vType id="carGreen" vClass="passenger" color="0,1,0" accel="2.6" decel="4.5" length="5.0" 
+           minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
+
+    <vType id="carBlue" vClass="passenger" color="0,0,1" accel="2.6" decel="4.5" length="5.0" 
+           minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
+
+    <!-- Rotta r1: da ovest (B2) a est (D2) -->
+    <route id="r1" edges="B2C2 C2D2"/>
+    
+    <!-- Rotta r2: da est (D2) a ovest (B2) -->
+    <route id="r2" edges="D2C2 C2B2"/>
+    
+    <!-- Rotta r3: da nord (C1) a sud (C3) -->
+    <route id="r3" edges="C1C2 C2C3"/>
+
+    <!-- Rotta r4: da ovest (B2) a nord (C1)-->
+    <route id="r4" edges="B2C2 C2C1"/>
+
+    <!-- Rotta r5: da est (D2) a nord (C1)-->
+    <route id="r5" edges="D2C2 C2C1"/>
+    
+    <!-- Rotta r6: da nord (C1) a est (D2) -->
+    <route id="r6" edges="C1C2 C2D2"/>
+
+    <!-- Rotta r7: da nord (C1) a ovest (B2) -->
+    <route id="r7" edges="C1C2 C2B2"/>
+
+    <!-- Veicolo che percorre la rotta r1 (ovest -> est) -->
+    <vehicle id="v1" type="carRed" route="r1" depart="0" departLane="0" departSpeed="max"/>
+    
+    <!-- Veicolo che percorre la rotta r2 (est -> ovest) -->
+    <vehicle id="v2" type="carGreen" route="r2" depart="0" departLane="0" departSpeed="max"/>
+    
+    <!-- Veicolo che percorre la rotta r3 (nord -> sud) -->
+    <vehicle id="v3" type="carBlue" route="r3" depart="0" departLane="0" departSpeed="max"/>
+
+    <!-- Veicolo che percorre la rotta r4 (ovest -> nord) -->
+    <!-- <vehicle id="v4" type="carRed" route="r4" depart="1" departLane="0" departSpeed="max"/> -->
+
+        <!-- Veicolo che percorre la rotta r2 (est -> ovest) -->
+    <!-- <vehicle id="v5" type="carGreen" route="r5" depart="1" departLane="0" departSpeed="max"/> -->
+    
+    <!-- Veicolo che percorre la rotta r3 (nord -> sud) -->
+    <!-- <vehicle id="v6" type="car" route="r6" depart="1" departLane="0" departSpeed="max"/> -->
+
+    <!-- Veicolo che percorre la rotta r4 (ovest -> nord) -->
+    <!-- <vehicle id="v7" type="car" route="r7" depart="1" departLane="0" departSpeed="max"/> -->
+
+</routes>
