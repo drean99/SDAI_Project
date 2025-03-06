@@ -11,13 +11,16 @@ public class VehicleAgent extends Agent {
     private String vehicleID;
     // Flag per evitare richieste ripetute
     private boolean requestSent = false;
-    // Stato: se il veicolo può procedere o deve fermarsi
+    // Flag che indica se il veicolo può procedere o deve fermarsi
     private boolean canCross = false;
+    // Flag che indica se il veicolo ha già attraversato l'incrocio
+    private boolean hasPassed = false;
     
     // Soglie (in unità della rete SUMO)
+    private static final double MAX_THRESHOLD = 30.0;
     private static final double APPROACH_THRESHOLD = 22.0;
     private static final double STOP_THRESHOLD = 12.0;
-    private static final double EXIT_THRESHOLD = 30.0;
+
     
     @Override
     protected void setup() {
@@ -39,7 +42,7 @@ public class VehicleAgent extends Agent {
             //System.out.println(vehicleID + " posizione SUMO: " + pos);
             
             // Cerca l'incrocio usando una soglia più ampia per permettere anche il reset
-            Intersection inter = Environment.findNearbyIntersection(pos, EXIT_THRESHOLD);
+            Intersection inter = Environment.findNearbyIntersection(pos, MAX_THRESHOLD);
             if (inter != null) {
                 double distance = pos.distance(new Coordinate((int) inter.getX(), (int) inter.getY()));
                 System.out.println(vehicleID + " distanza dall'incrocio " + inter.getId() + ": " + distance);
@@ -52,6 +55,7 @@ public class VehicleAgent extends Agent {
                     SumoConnector.changeSpeed(vehicleID, 5.0);
                     inviaRichiestaPassaggio(inter.getAgentName());
                     requestSent = true;
+                    hasPassed = false;
                 }
                 // Se il veicolo si è avvicinato troppo (entro STOP_THRESHOLD) e non ha ricevuto GO, forzalo a fermarsi
                 if (distance <= STOP_THRESHOLD && !canCross) {
@@ -59,12 +63,14 @@ public class VehicleAgent extends Agent {
                     System.out.println(vehicleID + " si è avvicinato troppo all'incrocio senza GO: mi fermo");
                 }
                 // Se il veicolo si è allontanato dall'incrocio, resetta il flag
-                else if (distance > EXIT_THRESHOLD && requestSent) {
+                else if (distance > STOP_THRESHOLD && requestSent && canCross && !hasPassed) {
                     System.out.println(vehicleID + " ha superato l'incrocio, resetto il flag per future richieste.");
+                    inviaMessaggioPassato(inter.getAgentName());
+                    hasPassed = true;
                     requestSent = false;
                 }
             } else {
-                System.out.println(vehicleID + " non è vicino ad alcun incrocio.");
+                //System.out.println(vehicleID + " non è vicino ad alcun incrocio.");
             }
         }
     }
@@ -91,9 +97,11 @@ public class VehicleAgent extends Agent {
                     SumoConnector.changeSpeed(vehicleID, 0.0);
                     System.out.println(vehicleID + " deve fermarsi, imposto velocità a 0.");
                 } else if (content.equalsIgnoreCase("END")) {
+                    
                     // Se riceve END e non ha attraversato, resetta il flag per permettere una nuova richiesta
-                    canCross = false;
-                    requestSent = false;
+                    if(!canCross)
+                        requestSent = false; //Corner case in qui il veicolo è fermo, ha ricevuto go ma riceve end mentre sta attraversando e quindi si ferma in mezzo all'incrocio
+                    
                     System.out.println(vehicleID + " ha ricevuto END, resetto lo stato per future richieste.");
                 }
             } else {
@@ -113,5 +121,17 @@ public class VehicleAgent extends Agent {
         msg.setContent(content);
         send(msg);
         System.out.println(vehicleID + " invia richiesta di passaggio a " + intersectionAgentName);
+    }
+
+    /**
+     * Invia un messaggio "PASSED" all'agente semaforico.
+     */
+    private void inviaMessaggioPassato(String intersectionAgentName) {
+        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+        msg.addReceiver(new jade.core.AID(intersectionAgentName, jade.core.AID.ISLOCALNAME));
+        String content = "PASSED," + vehicleID;
+        msg.setContent(content);
+        send(msg);
+        System.out.println(vehicleID + " invia messaggio PASSED a " + intersectionAgentName);
     }
 }
