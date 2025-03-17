@@ -1,10 +1,12 @@
 package Utility;
 
+import it.polito.appeal.traci.Edge;
 import it.polito.appeal.traci.SumoTraciConnection;
 import it.polito.appeal.traci.Vehicle;
 import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * SumoConnector gestisce la connessione a SUMO tramite TraCI4J.
@@ -119,5 +121,19 @@ public class SumoConnector {
             System.err.println("Errore in getNumVehicles: " + e.getMessage());
         }
         return -1;
+    }
+
+        /**
+     * Restituisce la route corrente del veicolo, come List<Edge>.
+     * Si basa sul wrapper di SumoConnector (che dovrà avere implementato questo metodo).
+     */
+    public static List<Edge> getVehicleRoute(String vehicleID) {
+        // Si presume che SumoConnector abbia implementato questo metodo
+        try {
+            return connection.getVehicleRepository().getByID(vehicleID).getCurrentRoute();
+        } catch (IOException e) {
+            System.err.println("Errore in getVehicleRoute: " + e.getMessage());
+        }
+        return null;
     }
 }

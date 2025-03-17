@@ -9,7 +9,7 @@ import java.util.List;
 
 public class IntersectionAgent extends Agent {
 
-    private final long TIMEOUT = 15000; // Timeout in millisecondi
+    private final long TIMEOUT = 10000; // Timeout in millisecondi
     // Lista di richieste pendenti
     private List<Request> pendingRequests = new ArrayList<>();
     // Richiesta attualmente autorizzata
@@ -20,17 +20,19 @@ public class IntersectionAgent extends Agent {
         String arrivalLane;
         String turningIntention;
         long timestamp;
+        int priority; // 0 = base, valori maggiori indicano una priorità più alta
 
-        public Request(String vehicleID, String arrivalLane, String turningIntention, long timestamp) {
+        public Request(String vehicleID, String arrivalLane, String turningIntention, long timestamp, int priority) {
             this.vehicleID = vehicleID;
             this.arrivalLane = arrivalLane.toLowerCase();
             this.turningIntention = turningIntention.toLowerCase();
             this.timestamp = timestamp;
+            this.priority = priority;
         }
         
         @Override
         public String toString() {
-            return "[" + vehicleID + ", " + arrivalLane + ", " + turningIntention + ", " + timestamp + "]";
+            return "[" + vehicleID + ", " + arrivalLane + ", " + turningIntention + ", " + timestamp + ", p=" + priority + "]";
         }
     }
 
@@ -41,25 +43,38 @@ public class IntersectionAgent extends Agent {
         addBehaviour(new QueueProcessingBehaviour(this, 300));
     }
 
-    // Comportamento che riceve tutti i messaggi: sia REQUEST_PASS che PASSED
+    // Comportamento che riceve i messaggi (REQUEST_PASS e PASSED)
     private class ProcessMessagesBehaviour extends CyclicBehaviour {
         @Override
         public void action() {
             ACLMessage msg = receive();
             if (msg != null) {
                 String content = msg.getContent().trim();
-                // Gestisci il messaggio PASSED
+                // Gestione del messaggio PASSED
                 if (content.startsWith("PASSED,")) {
                     String passedVehicle = content.substring("PASSED,".length()).trim();
+                    boolean removed = false;
                     if (currentRequest != null && currentRequest.vehicleID.equalsIgnoreCase(passedVehicle)) {
-                        System.out.println("IntersectionAgent: " + passedVehicle + " ha attraversato l'incrocio. Resettando la richiesta attuale.");
+                        System.out.println("IntersectionAgent: " + passedVehicle + " (currentRequest) ha attraversato l'incrocio. Resettando la richiesta attuale.");
                         currentRequest = null;
                     }
+                    else{
+                        // Rimuove eventuali richieste pendenti per quel veicolo
+                        for (int i = 0; i < pendingRequests.size(); i++) {
+                            if (pendingRequests.get(i).vehicleID.equalsIgnoreCase(passedVehicle)) {
+                                pendingRequests.remove(i);
+                                removed = true;
+                                System.out.println("IntersectionAgent: richiesta di " + passedVehicle + " rimossa dalla coda (PASSED ricevuto).");
+                                break;
+                            }
+                        }
+                    }
+
                 }
-                // Gestisci le richieste di passaggio
+                // Gestione delle richieste di passaggio
                 else if (content.startsWith("REQUEST_PASS,")) {
                     String[] parts = content.split(",");
-                    if (parts.length < 5) {
+                    if (parts.length < 6) {
                         System.out.println("Formato messaggio non valido: " + content);
                         return;
                     }
@@ -72,7 +87,13 @@ public class IntersectionAgent extends Agent {
                     } catch (NumberFormatException e) {
                         timestamp = System.currentTimeMillis();
                     }
-                    Request newReq = new Request(vehicleID, arrivalLane, turningIntention, timestamp);
+                    int priority;
+                    try {
+                        priority = Integer.parseInt(parts[5].trim());
+                    } catch (NumberFormatException e) {
+                        priority = 0;
+                    }
+                    Request newReq = new Request(vehicleID, arrivalLane, turningIntention, timestamp, priority);
                     if (!containsRequest(vehicleID)) {
                         pendingRequests.add(newReq);
                         System.out.println("IntersectionAgent: richiesta aggiunta da " + vehicleID + " -> " + newReq);
@@ -96,7 +117,16 @@ public class IntersectionAgent extends Agent {
         @Override
         protected void onTick() {
             long now = System.currentTimeMillis();
-            Collections.sort(pendingRequests, Comparator.comparingLong(r -> r.timestamp));
+            // Ordina la lista: priorità decrescente, se uguale per timestamp crescente
+            Collections.sort(pendingRequests, new Comparator<Request>() {
+                @Override
+                public int compare(Request r1, Request r2) {
+                    if (r2.priority != r1.priority) {
+                        return Integer.compare(r2.priority, r1.priority); // Maggiore priorità prima
+                    }
+                    return Long.compare(r1.timestamp, r2.timestamp); // Più vecchia prima
+                }
+            });
             
             if (currentRequest != null && now - currentRequest.timestamp > TIMEOUT) {
                 System.out.println("IntersectionAgent: Timeout per " + currentRequest.vehicleID);
@@ -107,7 +137,7 @@ public class IntersectionAgent extends Agent {
             if (currentRequest == null && !pendingRequests.isEmpty()) {
                 currentRequest = pendingRequests.remove(0);
                 sendGo(currentRequest.vehicleID);
-                System.out.println("IntersectionAgent: " + currentRequest.vehicleID + " autorizzato (FCFS).");
+                System.out.println("IntersectionAgent: " + currentRequest.vehicleID + " autorizzato (con priorità " + currentRequest.priority + ").");
             }
             
             if (currentRequest != null) {
@@ -141,6 +171,7 @@ public class IntersectionAgent extends Agent {
         return false;
     }
 
+    // Determina se il lato della nuova richiesta è a destra rispetto a quello della richiesta corrente
     private boolean isRightOf(String laneNew, String laneCurrent) {
         return laneNew.equalsIgnoreCase(getRightLane(laneCurrent));
     }

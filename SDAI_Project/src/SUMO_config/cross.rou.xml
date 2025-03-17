@@ -10,26 +10,21 @@
     <vType id="carBlue" vClass="passenger" color="0,0,1" accel="2.6" decel="4.5" length="5.0" 
            minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
 
+    <!-- Definizione di un tipo di veicolo molto aggressivo-->
+    <vType id="aggressiveCar" vClass="passenger" color="255,162,0" accel="3.6" decel="5.5" length="5.0" 
+           minGap="1.8" maxSpeed="16.9" sigma="0.6"/>
+
     <!-- Rotta r1: da ovest (B2) a est (D2) -->
     <route id="r1" edges="B2C2 C2D2"/>
     
     <!-- Rotta r2: da est (D2) a ovest (B2) -->
     <route id="r2" edges="D2C2 C2B2"/>
     
-    <!-- Rotta r3: da nord (C1) a sud (C3) -->
+    <!-- Rotta r3: da sud (C1) a nord (C3) -->
     <route id="r3" edges="C1C2 C2C3"/>
 
-    <!-- Rotta r4: da ovest (B2) a nord (C1)-->
-    <route id="r4" edges="B2C2 C2C1"/>
-
-    <!-- Rotta r5: da est (D2) a nord (C1)-->
-    <route id="r5" edges="D2C2 C2C1"/>
-    
-    <!-- Rotta r6: da nord (C1) a est (D2) -->
-    <route id="r6" edges="C1C2 C2D2"/>
-
-    <!-- Rotta r7: da nord (C1) a ovest (B2) -->
-    <route id="r7" edges="C1C2 C2B2"/>
+    <!-- Rotta r4: da nord (C3) a sud (C1) -->
+    <route id="r4" edges="C3C2 C2C1"/>
 
     <!-- Veicolo che percorre la rotta r1 (ovest -> est) -->
     <vehicle id="v1" type="carRed" route="r1" depart="0" departLane="0" departSpeed="max"/>
@@ -39,6 +34,9 @@
     
     <!-- Veicolo che percorre la rotta r3 (nord -> sud) -->
     <vehicle id="v3" type="carBlue" route="r3" depart="0" departLane="0" departSpeed="max"/>
+
+    <!-- Veicolo aggressivo che percorre la rotta r3 (nord -> sud) -->
+    <vehicle id="vA1" type="aggressiveCar" route="r4" depart="0" departLane="0" departSpeed="max"/>
 
     <!-- Veicolo che percorre la rotta r4 (ovest -> nord) -->
     <!-- <vehicle id="v4" type="carRed" route="r4" depart="1" departLane="0" departSpeed="max"/> -->

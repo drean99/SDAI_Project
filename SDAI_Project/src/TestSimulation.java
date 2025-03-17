@@ -18,6 +18,10 @@ public class TestSimulation {
         AgentContainer mainContainer = rt.createMainContainer(p);
         
         try {
+
+            // 0. Carica la mappa da un file XML
+            Environment.loadMap("SDAI_Project\\src\\SUMO_config\\cross.net.xml");
+
             // 1. Avvia la connessione a SUMO
             SumoConnector.connect("SDAI_Project\\src\\SUMO_config\\cross.sumocfg", 12345);
 
@@ -43,14 +47,8 @@ public class TestSimulation {
             vehicle2.start();
             AgentController vehicle3 = mainContainer.createNewAgent("v3", "VehicleAgent", null);
             vehicle3.start();
-            // AgentController vehicle4 = mainContainer.createNewAgent("v4", "VehicleAgent", null);
-            // vehicle4.start();
-            // AgentController vehicle5 = mainContainer.createNewAgent("v5", "VehicleAgent", null);
-            // vehicle5.start();
-            // AgentController vehicle6 = mainContainer.createNewAgent("v6", "VehicleAgent", null);
-            // vehicle6.start();
-            // AgentController vehicle7 = mainContainer.createNewAgent("v7", "VehicleAgent", null);
-            // vehicle7.start();
+            AgentController vehicleAggressive1 = mainContainer.createNewAgent("vA1", "VehicleAggressiveAgent", null);
+            vehicleAggressive1.start();
 
             // 5. Chiudi la connessione a SUMO
             //SumoConnector.close();
