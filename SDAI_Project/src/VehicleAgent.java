@@ -26,6 +26,8 @@ public class VehicleAgent extends Agent {
     private static final double MAX_THRESHOLD = 30.0;
     private static final double APPROACH_THRESHOLD = 22.0;
     private static final double STOP_THRESHOLD = 12.0;
+    // Nuova soglia per determinare se il veicolo ha superato l'incrocio
+    private static final double EXIT_THRESHOLD = 16.0;
 
     
     @Override
@@ -50,8 +52,6 @@ public class VehicleAgent extends Agent {
             Intersection inter = Environment.findNearbyIntersection(pos, MAX_THRESHOLD);
             if (inter != null) {
                 double distance = pos.distance(new Coordinate((int) inter.getX(), (int) inter.getY()));
-                //System.out.println(vehicleID + " distanza dall'incrocio " + inter.getId() + ": " + distance);
-                
                 // Se il veicolo è entro la soglia di approccio e non ha ancora inviato la richiesta
                 if (distance <= APPROACH_THRESHOLD && !requestSent) {
                     System.out.println(vehicleID + " è nell'area di approccio dell'incrocio " + inter.getId() +
@@ -60,7 +60,7 @@ public class VehicleAgent extends Agent {
                     SumoConnector.changeSpeed(vehicleID, 5.0);
                     
                     String message = inferVehicleIntent(); //TO TEST
-                    inviaRichiestaPassaggio(inter.getAgentName(),message);
+                    inviaRichiestaPassaggio(inter.getAgentName(), message);
                     
                     System.out.println(vehicleID + " ha inviato richiesta a " + inter.getAgentName() + " con intento di: " + message);
 
@@ -72,15 +72,13 @@ public class VehicleAgent extends Agent {
                     SumoConnector.changeSpeed(vehicleID, 0.0);
                     System.out.println(vehicleID + " si è avvicinato troppo all'incrocio senza GO: mi fermo");
                 }
-                // Se il veicolo si è allontanato dall'incrocio, resetta il flag
-                else if (distance > STOP_THRESHOLD && requestSent && canCross && !hasPassed) {
-                    System.out.println(vehicleID + " ha superato l'incrocio, resetto il flag per future richieste.");
+                // Se il veicolo si è allontanato sufficientemente dall'incrocio, resetta i flag e invia il messaggio PASSED
+                else if (distance > EXIT_THRESHOLD && requestSent && canCross && !hasPassed) {
+                    System.out.println(vehicleID + " ha superato l'incrocio, resetto lo stato per future richieste.");
                     inviaMessaggioPassato(inter.getAgentName());
                     requestSent = false;
                     canCross = false;
                 }
-            } else {
-                //System.out.println(vehicleID + " non è vicino ad alcun incrocio.");
             }
         }
     }
@@ -107,14 +105,16 @@ public class VehicleAgent extends Agent {
                     SumoConnector.changeSpeed(vehicleID, 0.0);
                     System.out.println(vehicleID + " deve fermarsi, imposto velocità a 0.");
                 } else if (content.equalsIgnoreCase("END")) {
-                    
-                    // Se riceve END e non ha attraversato, resetta il flag per permettere una nuova richiesta
-                    if(!canCross)
-                        requestSent = false; //Corner case in qui il veicolo è fermo, ha ricevuto go ma riceve end mentre sta attraversando e quindi si ferma in mezzo all'incrocio
-                    
+                    // Se riceve END e il veicolo non sta attraversando, resetta il flag
+                    if(!canCross) {
+                        requestSent = false;
+                        System.out.println(vehicleID + " ha ricevuto END e non sta attraversando: resetto flag per nuove richieste.");
+                    } else {
+                        System.out.println(vehicleID + " ha ricevuto END ma sta attraversando: mantengo lo stato attuale.");
+                    }
+                    // Aumenta il livello di priorità per future richieste
                     priorityLevel++;
-
-                    System.out.println(vehicleID + " ha ricevuto END, resetto lo stato per future richieste.");
+                    System.out.println(vehicleID + " ha aggiornato il livello di priorità a " + priorityLevel);
                 }
             } else {
                 block();
@@ -207,10 +207,10 @@ public class VehicleAgent extends Agent {
     /**
      * Converte un angolo (in radianti) in una direzione cardinale.
      * L'angolo viene normalizzato in [0, 2π).
-     * - [0, π/4) o [7π/4, 2π) → "east"
-     * - [π/4, 3π/4) → "north"
-     * - [3π/4, 5π/4) → "west"
-     * - [5π/4, 7π/4) → "south"
+     * - [0, π/4) o [7π/4, 2π) → "west"
+     * - [π/4, 3π/4) → "south"
+     * - [3π/4, 5π/4) → "east"
+     * - [5π/4, 7π/4) → "north"
      * Se l'angolo non rientra in nessuna di queste categorie, restituisce "unknown".
      */
     private String angleToCardinal(double angle) {
@@ -229,6 +229,4 @@ public class VehicleAgent extends Agent {
         }
         return "unknown,";
     }
-    
-
 }

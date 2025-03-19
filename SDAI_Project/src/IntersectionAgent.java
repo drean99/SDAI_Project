@@ -157,7 +157,7 @@ public class IntersectionAgent extends Agent {
             // Se abbiamo una sola richiesta autorizzata e ce ne sono altre pendenti,
             // prova ad autorizzare (in aggiunta) una seconda richiesta se compatibile
             if (currentRequests.size() == 1 && !pendingRequests.isEmpty()) {
-                for(int i=0; i<2; i++){
+                for(int i=0; i< Math.min(2, pendingRequests.size()); i++){
                     Request candidate = pendingRequests.get(i);
                     if (canGoTogether(currentRequests.get(0), candidate)) {
                         pendingRequests.remove(i);

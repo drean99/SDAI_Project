@@ -36,9 +36,11 @@
     <!-- Veicolo che percorre la rotta r2 (est -> ovest) -->
     <vehicle id="v2" type="carGreen" route="r2" depart="0" departLane="0" departSpeed="max"/>
     
-    <!-- Veicolo che percorre la rotta r3 (nord -> sud) -->
+    <!-- Veicolo che percorre la rotta r3 (sud -> nord) -->
     <vehicle id="v3" type="carBlue" route="r3" depart="0" departLane="0" departSpeed="max"/>
 
+    <!-- Veicolo che percorre la rotta r4 (nord -> sud) -->
+    <vehicle id="v4" type="carBlue" route="r4" depart="0" departLane="0" departSpeed="max"/>
     <!-- Veicolo aggressivo che percorre la rotta r3 (nord -> sud) -->
     <!-- <vehicle id="vA1" type="aggressiveCar" route="r4" depart="0" departLane="0" departSpeed="max"/> -->
 

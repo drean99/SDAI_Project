@@ -47,6 +47,8 @@ public class TestSimulation {
             vehicle2.start();
             AgentController vehicle3 = mainContainer.createNewAgent("v3", "VehicleAgent", null);
             vehicle3.start();
+            AgentController vehicle4 = mainContainer.createNewAgent("v4", "VehicleAgent", null);
+            vehicle4.start();
             // AgentController vehicleAggressive1 = mainContainer.createNewAgent("vA1", "VehicleAggressiveAgent", null);
             // vehicleAggressive1.start();
 
