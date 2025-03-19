@@ -50,7 +50,7 @@ public class VehicleAgent extends Agent {
             Intersection inter = Environment.findNearbyIntersection(pos, MAX_THRESHOLD);
             if (inter != null) {
                 double distance = pos.distance(new Coordinate((int) inter.getX(), (int) inter.getY()));
-                System.out.println(vehicleID + " distanza dall'incrocio " + inter.getId() + ": " + distance);
+                //System.out.println(vehicleID + " distanza dall'incrocio " + inter.getId() + ": " + distance);
                 
                 // Se il veicolo è entro la soglia di approccio e non ha ancora inviato la richiesta
                 if (distance <= APPROACH_THRESHOLD && !requestSent) {
@@ -58,7 +58,12 @@ public class VehicleAgent extends Agent {
                         ". Invio richiesta a " + inter.getAgentName());
                     // Riduci la velocità del veicolo in quanto ti avvicini ad un incrocio
                     SumoConnector.changeSpeed(vehicleID, 5.0);
-                    inviaRichiestaPassaggio(inter.getAgentName());
+                    
+                    String message = inferVehicleIntent(); //TO TEST
+                    inviaRichiestaPassaggio(inter.getAgentName(),message);
+                    
+                    System.out.println(vehicleID + " ha inviato richiesta a " + inter.getAgentName() + " con intento di: " + message);
+
                     requestSent = true;
                     hasPassed = false;
                 }
@@ -119,13 +124,13 @@ public class VehicleAgent extends Agent {
     /**
      * Invia una richiesta di passaggio all'agente semaforico.
      * Il formato del messaggio è: 
-     * "REQUEST_PASS,<vehicleID>,unknown,straight,<timestamp>,<priority>"
+     * "REQUEST_PASS,<vehicleID>,<daDoveArrivo(north,south,est,west)>,<intenzione(straight,left,right)>,<timestamp>,<priority>"
      */
-    private void inviaRichiestaPassaggio(String intersectionAgentName) {
+    private void inviaRichiestaPassaggio(String intersectionAgentName, String message) {
         ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
         msg.addReceiver(new jade.core.AID(intersectionAgentName, jade.core.AID.ISLOCALNAME));
         long ts = System.currentTimeMillis();
-        String content = "REQUEST_PASS," + vehicleID + ",unknown,straight," + ts + "," + priorityLevel;
+        String content = "REQUEST_PASS," + vehicleID + "," + message + ","+ ts + "," + priorityLevel;
         msg.setContent(content);
         send(msg);
         System.out.println(vehicleID + " invia richiesta di passaggio a " + intersectionAgentName + " con priorità " + priorityLevel);
@@ -145,35 +150,85 @@ public class VehicleAgent extends Agent {
         System.out.println(vehicleID + " invia messaggio PASSED a " + intersectionAgentName);
     }
 
-    //     public static String inferVehicleIntent(String vehicleID) {
-    //     List<Edge> route = SumoConnector.getVehicleRoute(vehicleID);
-    //     if (route != null && route.size() >= 2) {
-    //         Edge e1 = route.get(0);
-    //         Edge e2 = route.get(1);
-    //         e1.getID(); 
-    //         Coordinate end1 = e1.getEndCoordinate();   // ipotetico metodo di Edge
-    //         Coordinate start2 = e2.getStartCoordinate(); // ipotetico metodo di Edge
-            
-    //         int dx = start2.getX() - end1.getX();
-    //         int dy = start2.getY() - end1.getY();
-    //         double angle = Math.atan2(dy, dx); // in radianti
-            
-    //         // Normalizza l'angolo in gradi per una lettura più intuitiva
-    //         double angleDegrees = Math.toDegrees(angle);
-            
-    //         // Esempio di soglie (da regolare in base alla scala della tua rete)
-    //         if (Math.abs(angleDegrees) < 20) {
-    //             return "east";
-    //         } else if (Math.abs(angleDegrees - 180) < 20 || Math.abs(angleDegrees + 180) < 20) {
-    //             return "west";
-    //         } else if (Math.abs(angleDegrees - 90) < 20) {
-    //             return "south";
-    //         } else if (Math.abs(angleDegrees + 90) < 20) {
-    //             return "north";
-    //         } else {
-    //             return "turning"; // indica che il veicolo sta eseguendo una svolta
-    //         }
-    //     }
-    //     return "straight";
-    // }
+    private String inferVehicleIntent() {
+        // Recupera la route corrente del veicolo tramite l'API TraCI
+        // Si supponga che SumoConnector abbia un metodo getVehicleRoute che restituisce una List<Edge>
+        List<it.polito.appeal.traci.Edge> route = SumoConnector.getVehicleRoute(vehicleID);
+        if (route == null || route.size() < 2) {
+            System.out.println(vehicleID + " non dispone di una route sufficiente per inferire l'intento.");
+            return "unknown,unknown";
+        }
+        
+        // Per inferire l'intento, usiamo i primi due edge della route
+        it.polito.appeal.traci.Edge currentEdge = route.get(0);
+        it.polito.appeal.traci.Edge nextEdge = route.get(1);
+        
+        // Cerchiamo di ottenere le informazioni geometriche dall'Environment
+        Utility.Edge envCurrentEdge = Environment.getEdgeByID(currentEdge.getID());
+        Utility.Edge envNextEdge = Environment.getEdgeByID(nextEdge.getID());
+        if (envCurrentEdge == null || envNextEdge == null) {
+            System.out.println(vehicleID + " non ha trovato la geometria per gli edge della route.");
+            return "unknown,unknown";
+        }
+        
+        // Calcola il vettore del current edge
+        double dx1 = envCurrentEdge.getEnd().getX() - envCurrentEdge.getStart().getX();
+        double dy1 = envCurrentEdge.getEnd().getY() - envCurrentEdge.getStart().getY();
+        double angle1 = Math.atan2(dy1, dx1);
+        
+        // Determina la direzione di partenza (cardinale) basata sul vettore del current edge
+        String startingDirection = angleToCardinal(angle1);
+        
+        // Calcola il vettore del next edge
+        double dx2 = envNextEdge.getEnd().getX() - envNextEdge.getStart().getX();
+        double dy2 = envNextEdge.getEnd().getY() - envNextEdge.getStart().getY();
+        double angle2 = Math.atan2(dy2, dx2);
+        
+        // Calcola la differenza angolare e normalizza in (-pi, pi)
+        double angleDiff = angle2 - angle1;
+        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+        
+        // Imposta una soglia (15° in radianti)
+        double threshold = Math.toRadians(15);
+        String intent;
+        if (Math.abs(angleDiff) < threshold) {
+            intent = "straight";
+        } else if (angleDiff > 0) {
+            intent = "left";
+        } else {
+            intent = "right";
+        }
+        
+        // Restituisce il risultato nel formato "<startingDirection><intent>"
+        return startingDirection + intent;
+    }
+    
+    /**
+     * Converte un angolo (in radianti) in una direzione cardinale.
+     * L'angolo viene normalizzato in [0, 2π).
+     * - [0, π/4) o [7π/4, 2π) → "east"
+     * - [π/4, 3π/4) → "north"
+     * - [3π/4, 5π/4) → "west"
+     * - [5π/4, 7π/4) → "south"
+     * Se l'angolo non rientra in nessuna di queste categorie, restituisce "unknown".
+     */
+    private String angleToCardinal(double angle) {
+        // Normalizza l'angolo in [0, 2π)
+        if (angle < 0) {
+            angle += 2 * Math.PI;
+        }
+        if (angle < Math.PI / 4 || angle >= 7 * Math.PI / 4) {
+            return "west,";
+        } else if (angle >= Math.PI / 4 && angle < 3 * Math.PI / 4) {
+            return "south,";
+        } else if (angle >= 3 * Math.PI / 4 && angle < 5 * Math.PI / 4) {
+            return "east,";
+        } else if (angle >= 5 * Math.PI / 4 && angle < 7 * Math.PI / 4) {
+            return "north,";
+        }
+        return "unknown,";
+    }
+    
+
 }

@@ -127,7 +127,7 @@ public class SumoConnector {
      * Restituisce la route corrente del veicolo, come List<Edge>.
      * Si basa sul wrapper di SumoConnector (che dovrà avere implementato questo metodo).
      */
-    public static List<Edge> getVehicleRoute(String vehicleID) {
+    public static synchronized List<Edge> getVehicleRoute(String vehicleID) {
         // Si presume che SumoConnector abbia implementato questo metodo
         try {
             return connection.getVehicleRepository().getByID(vehicleID).getCurrentRoute();

@@ -5,16 +5,18 @@ import jade.lang.acl.ACLMessage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 public class IntersectionAgent extends Agent {
 
-    private final long TIMEOUT = 10000; // Timeout in millisecondi
+    private final long TIMEOUT = 10000; // Timeout in millisecondi per considerare scaduta una richiesta
     // Lista di richieste pendenti
     private List<Request> pendingRequests = new ArrayList<>();
-    // Richiesta attualmente autorizzata
-    private Request currentRequest = null;
+    // Lista delle richieste attualmente autorizzate (massimo 2 contemporaneamente)
+    private List<Request> currentRequests = new ArrayList<>();
 
+    // Classe interna per rappresentare una richiesta di passaggio
     private class Request {
         String vehicleID;
         String arrivalLane;
@@ -40,10 +42,10 @@ public class IntersectionAgent extends Agent {
     protected void setup() {
         System.out.println(getLocalName() + " avviato come IntersectionAgent.");
         addBehaviour(new ProcessMessagesBehaviour());
-        addBehaviour(new QueueProcessingBehaviour(this, 300));
+        addBehaviour(new QueueProcessingBehaviour(this, 200));
     }
 
-    // Comportamento che riceve i messaggi (REQUEST_PASS e PASSED)
+    // Comportamento per ricevere i messaggi (sia REQUEST_PASS che PASSED)
     private class ProcessMessagesBehaviour extends CyclicBehaviour {
         @Override
         public void action() {
@@ -53,23 +55,27 @@ public class IntersectionAgent extends Agent {
                 // Gestione del messaggio PASSED
                 if (content.startsWith("PASSED,")) {
                     String passedVehicle = content.substring("PASSED,".length()).trim();
+                    // Se il veicolo autorizzato (fra quelli correnti) ha attraversato, lo rimuoviamo
+                    Iterator<Request> it = currentRequests.iterator();
                     boolean removed = false;
-                    if (currentRequest != null && currentRequest.vehicleID.equalsIgnoreCase(passedVehicle)) {
-                        System.out.println("IntersectionAgent: " + passedVehicle + " (currentRequest) ha attraversato l'incrocio. Resettando la richiesta attuale.");
-                        currentRequest = null;
-                    }
-                    else{
-                        // Rimuove eventuali richieste pendenti per quel veicolo
-                        for (int i = 0; i < pendingRequests.size(); i++) {
-                            if (pendingRequests.get(i).vehicleID.equalsIgnoreCase(passedVehicle)) {
-                                pendingRequests.remove(i);
-                                removed = true;
-                                System.out.println("IntersectionAgent: richiesta di " + passedVehicle + " rimossa dalla coda (PASSED ricevuto).");
-                                break;
-                            }
+                    while (it.hasNext()) {
+                        Request req = it.next();
+                        if (req.vehicleID.equalsIgnoreCase(passedVehicle)) {
+                            it.remove();
+                            removed = true;
+                            System.out.println("IntersectionAgent: " + passedVehicle + " ha attraversato (rimosso da currentRequests).");
+                            break;
                         }
                     }
-
+                    // Inoltre, rimuoviamo eventuali richieste pendenti per quel veicolo
+                    it = pendingRequests.iterator();
+                    while (it.hasNext()) {
+                        Request req = it.next();
+                        if (req.vehicleID.equalsIgnoreCase(passedVehicle)) {
+                            it.remove();
+                            System.out.println("IntersectionAgent: richiesta di " + passedVehicle + " rimossa dalla coda (PASSED ricevuto).");
+                        }
+                    }
                 }
                 // Gestione delle richieste di passaggio
                 else if (content.startsWith("REQUEST_PASS,")) {
@@ -117,48 +123,75 @@ public class IntersectionAgent extends Agent {
         @Override
         protected void onTick() {
             long now = System.currentTimeMillis();
-            // Ordina la lista: priorità decrescente, se uguale per timestamp crescente
+
+            // Rimuovi eventuali currentRequests scadute
+            Iterator<Request> it = currentRequests.iterator();
+            while (it.hasNext()) {
+                Request req = it.next();
+                if (now - req.timestamp > TIMEOUT) {
+                    System.out.println("IntersectionAgent: Timeout per " + req.vehicleID + " (rimosso da currentRequests).");
+                    sendEnd(req.vehicleID);
+                    it.remove();
+                }
+            }
+
+            // Ordina le richieste pendenti: priorità decrescente, se uguale per timestamp crescente
             Collections.sort(pendingRequests, new Comparator<Request>() {
                 @Override
                 public int compare(Request r1, Request r2) {
                     if (r2.priority != r1.priority) {
-                        return Integer.compare(r2.priority, r1.priority); // Maggiore priorità prima
+                        return Integer.compare(r2.priority, r1.priority);
                     }
-                    return Long.compare(r1.timestamp, r2.timestamp); // Più vecchia prima
+                    return Long.compare(r1.timestamp, r2.timestamp);
                 }
             });
-            
-            if (currentRequest != null && now - currentRequest.timestamp > TIMEOUT) {
-                System.out.println("IntersectionAgent: Timeout per " + currentRequest.vehicleID);
-                sendEnd(currentRequest.vehicleID);
-                currentRequest = null;
+
+            // Se non abbiamo alcuna richiesta autorizzata e ci sono richieste pendenti, autorizza la prima
+            if (currentRequests.isEmpty() && !pendingRequests.isEmpty()) {
+                Request first = pendingRequests.remove(0);
+                currentRequests.add(first);
+                sendGo(first.vehicleID);
+                System.out.println("IntersectionAgent: autorizzato " + first.vehicleID + " (p=" + first.priority + ").");
             }
-            
-            if (currentRequest == null && !pendingRequests.isEmpty()) {
-                currentRequest = pendingRequests.remove(0);
-                sendGo(currentRequest.vehicleID);
-                System.out.println("IntersectionAgent: " + currentRequest.vehicleID + " autorizzato (con priorità " + currentRequest.priority + ").");
-            }
-            
-            if (currentRequest != null) {
-                Request candidate = null;
-                for (Request req : pendingRequests) {
-                    if (isRightOf(req.arrivalLane, currentRequest.arrivalLane)) {
-                        candidate = req;
+
+            // Se abbiamo una sola richiesta autorizzata e ce ne sono altre pendenti,
+            // prova ad autorizzare (in aggiunta) una seconda richiesta se compatibile
+            if (currentRequests.size() == 1 && !pendingRequests.isEmpty()) {
+                for(int i=0; i<2; i++){
+                    Request candidate = pendingRequests.get(i);
+                    if (canGoTogether(currentRequests.get(0), candidate)) {
+                        pendingRequests.remove(i);
+                        currentRequests.add(candidate);
+                        sendGo(candidate.vehicleID);
+                        System.out.println("IntersectionAgent: autorizzato concomitantemente " + candidate.vehicleID +
+                                " insieme a " + currentRequests.get(0).vehicleID);
                         break;
                     }
                 }
-                if (candidate != null) {
-                    System.out.println("IntersectionAgent: " + candidate.vehicleID + " (da " + candidate.arrivalLane +
-                        ") ha la precedenza rispetto a " + currentRequest.vehicleID +
-                        " (da " + currentRequest.arrivalLane + ").");
-                    sendStop(currentRequest.vehicleID);
-                    pendingRequests.remove(candidate);
-                    currentRequest = candidate;
-                    sendGo(currentRequest.vehicleID);
-                }
             }
+
+            // Se abbiamo già due richieste autorizzate, non facciamo altro finché non ne scade almeno una.
         }
+    }
+
+    /**
+     * Restituisce true se il veicolo della richiesta r2 può attraversare contemporaneamente
+     * a quello di r1, secondo regole semplificate.
+     * Ad esempio, se entrambi vanno straight e provengono da direzioni opposte (north vs south oppure east vs west).
+     */
+    private boolean canGoTogether(Request r1, Request r2) {
+        // Controlla che entrambi abbiano l'intenzione "straight"
+        if (!r1.turningIntention.equals("straight") || !r2.turningIntention.equals("straight")) {
+            return false;
+        }
+        // Controlla se le direzioni di arrivo sono opposte
+        if ((r1.arrivalLane.equals("east") && r2.arrivalLane.equals("west")) ||
+            (r1.arrivalLane.equals("west") && r2.arrivalLane.equals("east")) ||
+            (r1.arrivalLane.equals("north") && r2.arrivalLane.equals("south")) ||
+            (r1.arrivalLane.equals("south") && r2.arrivalLane.equals("north"))) {
+            return true;
+        }
+        return false;
     }
 
     private boolean containsRequest(String vehicleID) {
@@ -166,26 +199,14 @@ public class IntersectionAgent extends Agent {
             if (req.vehicleID.equalsIgnoreCase(vehicleID))
                 return true;
         }
-        if (currentRequest != null && currentRequest.vehicleID.equalsIgnoreCase(vehicleID))
-            return true;
+        for (Request req : currentRequests) {
+            if (req.vehicleID.equalsIgnoreCase(vehicleID))
+                return true;
+        }
         return false;
     }
 
-    // Determina se il lato della nuova richiesta è a destra rispetto a quello della richiesta corrente
-    private boolean isRightOf(String laneNew, String laneCurrent) {
-        return laneNew.equalsIgnoreCase(getRightLane(laneCurrent));
-    }
-
-    private String getRightLane(String lane) {
-        switch(lane.toLowerCase()) {
-            case "north": return "east";
-            case "east":  return "south";
-            case "south": return "west";
-            case "west":  return "north";
-            default: return "";
-        }
-    }
-
+    // Metodi helper per l'invio dei messaggi
     private void sendStop(String vehicleID) {
         ACLMessage stopMsg = new ACLMessage(ACLMessage.INFORM);
         stopMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));

@@ -47,8 +47,8 @@ public class TestSimulation {
             vehicle2.start();
             AgentController vehicle3 = mainContainer.createNewAgent("v3", "VehicleAgent", null);
             vehicle3.start();
-            AgentController vehicleAggressive1 = mainContainer.createNewAgent("vA1", "VehicleAggressiveAgent", null);
-            vehicleAggressive1.start();
+            // AgentController vehicleAggressive1 = mainContainer.createNewAgent("vA1", "VehicleAggressiveAgent", null);
+            // vehicleAggressive1.start();
 
             // 5. Chiudi la connessione a SUMO
             //SumoConnector.close();
