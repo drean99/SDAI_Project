@@ -17,8 +17,8 @@
     <!-- Rotta r1: da ovest (B2) a est (D2) -->
     <route id="r1" edges="B2C2 C2D2"/>
 
-<!-- Rotta r1Curva: da ovest (B2) a nord (C3) -->
-    <route id="r1Curva" edges="B2C2 C2C3"/>
+<!-- Rotta r1Curva: da ovest (B2) a sud (C1) -->
+    <route id="r1Curva" edges="B2C2 C2C1"/>
 
     
     <!-- Rotta r2: da est (D2) a ovest (B2) -->
@@ -31,7 +31,7 @@
     <route id="r4" edges="C3C2 C2C1"/>
 
     <!-- Veicolo che percorre la rotta r1 (ovest -> est) -->
-    <vehicle id="v1" type="carRed" route="r1" depart="0" departLane="0" departSpeed="max"/>
+    <vehicle id="v1" type="carRed" route="r1Curva" depart="0" departLane="0" departSpeed="max"/>
     
     <!-- Veicolo che percorre la rotta r2 (est -> ovest) -->
     <vehicle id="v2" type="carGreen" route="r2" depart="0" departLane="0" departSpeed="max"/>
