@@ -174,11 +174,6 @@ public class IntersectionAgent extends Agent {
         }
     }
 
-    /**
-     * Restituisce true se il veicolo della richiesta r2 può attraversare contemporaneamente
-     * a quello di r1, secondo regole semplificate.
-     * Ad esempio, se entrambi vanno straight e provengono da direzioni opposte (north vs south oppure east vs west).
-     */
 /**
  * Determina se due veicoli possono procedere contemporaneamente, considerando sia
  * la loro direzione di arrivo (arrivalLane) sia l'intenzione (turningIntention).
@@ -292,36 +287,27 @@ private String getNext(String direction) {
 }
 
 
-    private boolean containsRequest(String vehicleID) {
-        for (Request req : pendingRequests) {
-            if (req.vehicleID.equalsIgnoreCase(vehicleID))
-                return true;
-        }
-        for (Request req : currentRequests) {
-            if (req.vehicleID.equalsIgnoreCase(vehicleID))
-                return true;
-        }
-        return false;
+private boolean containsRequest(String vehicleID) {
+    for (Request req : pendingRequests) {
+        if (req.vehicleID.equalsIgnoreCase(vehicleID))
+            return true;
     }
-
-    // Metodi helper per l'invio dei messaggi
-    private void sendStop(String vehicleID) {
-        ACLMessage stopMsg = new ACLMessage(ACLMessage.INFORM);
-        stopMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
-        stopMsg.setContent("STOP");
-        send(stopMsg);
-        System.out.println("IntersectionAgent: inviata STOP a " + vehicleID);
+    for (Request req : currentRequests) {
+        if (req.vehicleID.equalsIgnoreCase(vehicleID))
+            return true;
     }
+    return false;
+}
 
-    private void sendEnd(String vehicleID) {
-        ACLMessage endMsg = new ACLMessage(ACLMessage.INFORM);
-        endMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
-        endMsg.setContent("END");
-        send(endMsg);
-        System.out.println("IntersectionAgent: inviato END a " + vehicleID);
-    }
+private void sendEnd(String vehicleID) {
+    ACLMessage endMsg = new ACLMessage(ACLMessage.INFORM);
+    endMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
+    endMsg.setContent("END");
+    send(endMsg);
+    System.out.println("IntersectionAgent: inviato END a " + vehicleID);
+}
 
-    private void sendGo(String vehicleID) {
+private void sendGo(String vehicleID) {
         ACLMessage goMsg = new ACLMessage(ACLMessage.CONFIRM);
         goMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
         goMsg.setContent("GO");

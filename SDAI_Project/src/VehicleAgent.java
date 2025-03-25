@@ -100,11 +100,8 @@ public class VehicleAgent extends Agent {
                     // Imposta la velocità al valore desiderato (ad esempio, 13.9)
                     SumoConnector.changeSpeed(vehicleID, 13.9);
                     System.out.println(vehicleID + " può attraversare, imposto velocità a 13.9.");
-                } else if (content.equalsIgnoreCase("STOP")) {
-                    canCross = false;
-                    SumoConnector.changeSpeed(vehicleID, 0.0);
-                    System.out.println(vehicleID + " deve fermarsi, imposto velocità a 0.");
-                } else if (content.equalsIgnoreCase("END")) {
+                }
+                else if (content.equalsIgnoreCase("END")) {
                     // Se riceve END e il veicolo non sta attraversando, resetta il flag
                     if(!canCross) {
                         requestSent = false;
@@ -116,7 +113,8 @@ public class VehicleAgent extends Agent {
                     priorityLevel++;
                     System.out.println(vehicleID + " ha aggiornato il livello di priorità a " + priorityLevel);
                 }
-            } else {
+            } 
+            else {
                 block();
             }
         }

@@ -156,17 +156,18 @@ public class VehicleAggressiveAgent extends Agent {
      */
     private String inferVehicleIntent() {
         // Recupera la route corrente del veicolo tramite l'API TraCI
+        // Si supponga che SumoConnector abbia un metodo getVehicleRoute che restituisce una List<Edge>
         List<it.polito.appeal.traci.Edge> route = SumoConnector.getVehicleRoute(vehicleID);
         if (route == null || route.size() < 2) {
             System.out.println(vehicleID + " non dispone di una route sufficiente per inferire l'intento.");
             return "unknown,unknown";
         }
         
-        // Usa i primi due edge della route
+        // Per inferire l'intento, usiamo i primi due edge della route
         it.polito.appeal.traci.Edge currentEdge = route.get(0);
         it.polito.appeal.traci.Edge nextEdge = route.get(1);
         
-        // Ottieni le informazioni geometriche dall'Environment
+        // Cerchiamo di ottenere le informazioni geometriche dall'Environment
         Utility.Edge envCurrentEdge = Environment.getEdgeByID(currentEdge.getID());
         Utility.Edge envNextEdge = Environment.getEdgeByID(nextEdge.getID());
         if (envCurrentEdge == null || envNextEdge == null) {
@@ -181,18 +182,18 @@ public class VehicleAggressiveAgent extends Agent {
         
         // Determina la direzione di partenza (cardinale) basata sul vettore del current edge
         String startingDirection = angleToCardinal(angle1);
-
+        
         // Calcola il vettore del next edge
         double dx2 = envNextEdge.getEnd().getX() - envNextEdge.getStart().getX();
         double dy2 = envNextEdge.getEnd().getY() - envNextEdge.getStart().getY();
         double angle2 = Math.atan2(dy2, dx2);
         
-        // Calcola la differenza angolare normalizzata in (-π, π)
+        // Calcola la differenza angolare e normalizza in (-pi, pi)
         double angleDiff = angle2 - angle1;
         while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
         while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
         
-        // Soglia di 15° in radianti
+        // Imposta una soglia (15° in radianti)
         double threshold = Math.toRadians(15);
         String intent;
         if (Math.abs(angleDiff) < threshold) {
@@ -209,14 +210,15 @@ public class VehicleAggressiveAgent extends Agent {
     
     /**
      * Converte un angolo (in radianti) in una direzione cardinale.
-     * Normalizza l'angolo in [0, 2π).
+     * L'angolo viene normalizzato in [0, 2π).
      * - [0, π/4) o [7π/4, 2π) → "west"
      * - [π/4, 3π/4) → "south"
      * - [3π/4, 5π/4) → "east"
      * - [5π/4, 7π/4) → "north"
-     * Se non rientra in nessuna categoria, restituisce "unknown".
+     * Se l'angolo non rientra in nessuna di queste categorie, restituisce "unknown".
      */
     private String angleToCardinal(double angle) {
+        // Normalizza l'angolo in [0, 2π)
         if (angle < 0) {
             angle += 2 * Math.PI;
         }
