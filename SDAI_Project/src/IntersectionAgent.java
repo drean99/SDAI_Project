@@ -42,7 +42,7 @@ public class IntersectionAgent extends Agent {
     protected void setup() {
         System.out.println(getLocalName() + " avviato come IntersectionAgent.");
         addBehaviour(new ProcessMessagesBehaviour());
-        addBehaviour(new QueueProcessingBehaviour(this, 200));
+        addBehaviour(new QueueProcessingBehaviour(this, 100));
     }
 
     // Comportamento per ricevere i messaggi (sia REQUEST_PASS che PASSED)

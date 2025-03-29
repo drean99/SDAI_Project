@@ -18,7 +18,10 @@ public class VehicleAgent extends Agent {
     private boolean canCross = false;
     // Flag che indica se il veicolo ha già attraversato l'incrocio
     private boolean hasPassed = false;
-    
+    // Flag per inviare il messaggio PASSED solo una volta
+    private boolean passedMessageSent = false;
+
+
     // Contatore per la priorità; se il veicolo riceve END più volte, aumenta la priorità per la richiesta successiva
     private int priorityLevel = 0;
 
@@ -27,7 +30,7 @@ public class VehicleAgent extends Agent {
     private static final double APPROACH_THRESHOLD = 22.0;
     private static final double STOP_THRESHOLD = 12.0;
     // Nuova soglia per determinare se il veicolo ha superato l'incrocio
-    private static final double EXIT_THRESHOLD = 16.0;
+    private static final double EXIT_THRESHOLD = 13.0;
 
     
     @Override
@@ -54,12 +57,13 @@ public class VehicleAgent extends Agent {
                 double distance = pos.distance(new Coordinate((int) inter.getX(), (int) inter.getY()));
                 // Se il veicolo è entro la soglia di approccio e non ha ancora inviato la richiesta
                 if (distance <= APPROACH_THRESHOLD && !requestSent) {
+                    passedMessageSent = false;
                     System.out.println(vehicleID + " è nell'area di approccio dell'incrocio " + inter.getId() +
                         ". Invio richiesta a " + inter.getAgentName());
                     // Riduci la velocità del veicolo in quanto ti avvicini ad un incrocio
                     SumoConnector.changeSpeed(vehicleID, 5.0);
                     
-                    String message = inferVehicleIntent(); //TO TEST
+                    String message = inferVehicleIntent();
                     inviaRichiestaPassaggio(inter.getAgentName(), message);
                     
                     System.out.println(vehicleID + " ha inviato richiesta a " + inter.getAgentName() + " con intento di: " + message);
@@ -73,7 +77,7 @@ public class VehicleAgent extends Agent {
                     System.out.println(vehicleID + " si è avvicinato troppo all'incrocio senza GO: mi fermo");
                 }
                 // Se il veicolo si è allontanato sufficientemente dall'incrocio, resetta i flag e invia il messaggio PASSED
-                else if (distance > EXIT_THRESHOLD && requestSent && canCross && !hasPassed) {
+                else if (distance > EXIT_THRESHOLD && requestSent && canCross && !passedMessageSent) {
                     System.out.println(vehicleID + " ha superato l'incrocio, resetto lo stato per future richieste.");
                     inviaMessaggioPassato(inter.getAgentName());
                     requestSent = false;

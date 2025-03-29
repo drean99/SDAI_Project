@@ -13,16 +13,17 @@ public class VehicleAggressiveAgent extends Agent {
     private boolean requestSent = false;
     // Stato: se il veicolo può procedere o deve rallentare/fermarsi
     private boolean canCross = false;
-    // Flag per indicare che il veicolo ha già comunicato di aver attraversato l'incrocio
-    private boolean hasPassed = false;
+    // Flag per indicare che il messaggio PASSED è già stato inviato per questo attraversamento
+    private boolean passedMessageSent = false;
     
     // Contatore per la priorità; se il veicolo riceve END più volte, aumenta la priorità per la richiesta successiva
     private int priorityLevel = 0;
 
-    // Soglie aggressive (in unità della rete SUMO)
-    private static final double MAX_THRESHOLD = 30.0;    // se oltre questo, resetto lo stato
-    private static final double APPROACH_THRESHOLD = 22.0; // area in cui si invia la richiesta
-    private static final double STOP_THRESHOLD = 12.0;     // area critica: se non autorizzato, rallento
+    // Soglie (in unità della rete SUMO)
+    private static final double MAX_THRESHOLD = 30.0;     // oltre questo, resetto lo stato
+    private static final double APPROACH_THRESHOLD = 22.0;  // area in cui si invia la richiesta
+    private static final double STOP_THRESHOLD = 12.0;      // area critica: se non autorizzato, rallento
+    private static final double EXIT_THRESHOLD = 13.0;
 
     @Override
     protected void setup() {
@@ -47,11 +48,11 @@ public class VehicleAggressiveAgent extends Agent {
                 double distance = pos.distance(new Coordinate((int) inter.getX(), (int) inter.getY()));
                 System.out.println(vehicleID + " distanza dall'incrocio " + inter.getId() + ": " + distance);
                 
-                // Se il veicolo si avvicina (entro APPROACH_THRESHOLD) e non ha già inviato la richiesta in questo ciclo
-                if (distance <= APPROACH_THRESHOLD && !requestSent && !hasPassed) {
+                // Se il veicolo si avvicina (entro APPROACH_THRESHOLD) e non ha già inviato la richiesta
+                if (distance <= APPROACH_THRESHOLD && !requestSent && !passedMessageSent) {
                     System.out.println(vehicleID + " è nell'area di approccio aggressiva dell'incrocio " + inter.getId() +
                         ". Invio richiesta a " + inter.getAgentName());
-                    // Aggiorna la velocità aggressiva
+                    // Imposta una velocità aggressiva
                     SumoConnector.changeSpeed(vehicleID, 10.0);
                     
                     String message = inferVehicleIntent();
@@ -64,22 +65,19 @@ public class VehicleAggressiveAgent extends Agent {
                     SumoConnector.changeSpeed(vehicleID, 7.0);
                     System.out.println(vehicleID + " si è avvicinato troppo senza autorizzazione: rallento a 7.0.");
                 }
-                // Se il veicolo ha già attraversato (ha inviato PASSED) oppure sta uscendo (oltre MAX_THRESHOLD),
-                // resettiamo i flag per poter inviare una nuova richiesta al prossimo avvicinamento
+                // Se il veicolo ha attraversato l'incrocio (oltre NEW_EXIT_THRESHOLD), invio PASSED anche se non ha ricevuto GO
+                if (distance > EXIT_THRESHOLD && !passedMessageSent) {
+                    System.out.println(vehicleID + " ha attraversato l'incrocio - invio PASSED.");
+                    inviaMessaggioPassato(inter.getAgentName());
+                    passedMessageSent = true;
+                }
+                // Se il veicolo è lontano (oltre MAX_THRESHOLD), resetto tutti i flag per il prossimo ciclo
                 if (distance > MAX_THRESHOLD) {
-                    if (requestSent && !hasPassed) {
-                        System.out.println(vehicleID + " ha superato l'incrocio (senza aver ricevuto GO) - invio PASSED comunque.");
-                        inviaMessaggioPassato(inter.getAgentName());
-                        hasPassed = true;
-                    }
-                    // Reset completo per il prossimo ciclo di avvicinamento
                     requestSent = false;
                     canCross = false;
-                    // Una volta che il veicolo è lontano, resettiamo anche hasPassed
-                    hasPassed = false;
+                    passedMessageSent = false;
                 }
             }
-            // Se non c'è alcun incrocio rilevato, non fare nulla
         }
     }
     
@@ -100,11 +98,6 @@ public class VehicleAggressiveAgent extends Agent {
                     // L'aggressivo mantiene una velocità elevata: ad esempio, 16.9 (massima per aggressiveCar)
                     SumoConnector.changeSpeed(vehicleID, 16.9);
                     System.out.println(vehicleID + " può attraversare, imposto velocità a 16.9.");
-                } else if (content.equalsIgnoreCase("STOP")) {
-                    canCross = false;
-                    // Se riceve STOP, l'aggressivo rallenta leggermente ma non si ferma completamente
-                    SumoConnector.changeSpeed(vehicleID, 2.0);
-                    System.out.println(vehicleID + " riceve STOP, imposto velocità a 2.0.");
                 } else if (content.equalsIgnoreCase("END")) {
                     // Se riceve END, anche se non è autorizzato, incrementa il livello di priorità per la prossima richiesta
                     // E resetta lo stato per future richieste.
@@ -144,7 +137,6 @@ public class VehicleAggressiveAgent extends Agent {
         String content = "PASSED," + vehicleID;
         msg.setContent(content);
         send(msg);
-        hasPassed = true;
         // Reset della priorità per il prossimo ciclo
         priorityLevel = 0;
         System.out.println(vehicleID + " invia messaggio PASSED a " + intersectionAgentName);

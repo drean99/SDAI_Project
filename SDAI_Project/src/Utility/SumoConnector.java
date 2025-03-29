@@ -80,7 +80,7 @@ public class SumoConnector {
                 Point2D pos = veh.getPosition();
                 return new Coordinate((int) pos.getX(), (int) pos.getY());
             } else {
-                System.err.println("SUMO: Veicolo " + vehicleID + " non trovato.");
+                //System.err.println("SUMO: Veicolo " + vehicleID + " non trovato.");
             }
         } catch (Exception e) {
             System.err.println("Errore in getVehiclePosition per " + vehicleID + ": " + e.getMessage());
