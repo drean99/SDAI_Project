@@ -3,17 +3,32 @@ import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.lang.acl.ACLMessage;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.PriorityQueue;
 
 public class IntersectionAgent extends Agent {
 
     private final long TIMEOUT = 10000; // Timeout in millisecondi per considerare scaduta una richiesta
-    // Lista di richieste pendenti
-    private List<Request> pendingRequests = new ArrayList<>();
-    // Lista delle richieste attualmente autorizzate (massimo 2 contemporaneamente)
+ private PriorityQueue<Request> pendingRequests = new PriorityQueue<>(new Comparator<Request>() {
+        @Override
+        public int compare(Request r1, Request r2) {
+            int cmp = Integer.compare(r2.priority, r1.priority);
+            if (cmp == 0) {
+                cmp = Long.compare(r1.timestamp, r2.timestamp);
+            }
+            if (cmp == 0) {
+                cmp = r1.vehicleID.compareTo(r2.vehicleID);
+            }
+            return cmp;
+        }
+    });
+    // Set per il controllo rapido dei duplicati
+    private HashSet<String> activeVehicleIDs = new HashSet<>();
+    
+    // Lista per le richieste correnti (max 2)
     private List<Request> currentRequests = new ArrayList<>();
 
     // Classe interna per rappresentare una richiesta di passaggio
@@ -52,56 +67,47 @@ public class IntersectionAgent extends Agent {
             ACLMessage msg = receive();
             if (msg != null) {
                 String content = msg.getContent().trim();
-                // Gestione del messaggio PASSED
                 if (content.startsWith("PASSED,")) {
                     String passedVehicle = content.substring("PASSED,".length()).trim();
-                    // Se il veicolo autorizzato (fra quelli correnti) ha attraversato, lo rimuoviamo
+                    // Rimuovo dalle richieste correnti
                     Iterator<Request> it = currentRequests.iterator();
-                    boolean removed = false;
                     while (it.hasNext()) {
                         Request req = it.next();
                         if (req.vehicleID.equalsIgnoreCase(passedVehicle)) {
                             it.remove();
-                            removed = true;
                             System.out.println("IntersectionAgent: " + passedVehicle + " ha attraversato (rimosso da currentRequests).");
                             break;
                         }
                     }
-                    // Inoltre, rimuoviamo eventuali richieste pendenti per quel veicolo
-                    it = pendingRequests.iterator();
-                    while (it.hasNext()) {
-                        Request req = it.next();
-                        if (req.vehicleID.equalsIgnoreCase(passedVehicle)) {
-                            it.remove();
-                            System.out.println("IntersectionAgent: richiesta di " + passedVehicle + " rimossa dalla coda (PASSED ricevuto).");
-                        }
-                    }
-                }
-                // Gestione delle richieste di passaggio
-                else if (content.startsWith("REQUEST_PASS,")) {
+                    // Rimuovo eventuali richieste pendenti per quel veicolo
+                    pendingRequests.removeIf(req -> req.vehicleID.equalsIgnoreCase(passedVehicle));
+                    activeVehicleIDs.remove(passedVehicle);
+                } else if (content.startsWith("REQUEST_PASS,")) {
                     String[] parts = content.split(",");
                     if (parts.length < 6) {
                         System.out.println("Formato messaggio non valido: " + content);
                         return;
                     }
                     String vehicleID = parts[1].trim();
-                    String arrivalLane = parts[2].trim().toLowerCase();
-                    String turningIntention = parts[3].trim().toLowerCase();
-                    long timestamp;
-                    try {
-                        timestamp = Long.parseLong(parts[4].trim());
-                    } catch (NumberFormatException e) {
-                        timestamp = System.currentTimeMillis();
-                    }
-                    int priority;
-                    try {
-                        priority = Integer.parseInt(parts[5].trim());
-                    } catch (NumberFormatException e) {
-                        priority = 0;
-                    }
-                    Request newReq = new Request(vehicleID, arrivalLane, turningIntention, timestamp, priority);
-                    if (!containsRequest(vehicleID)) {
+                    // Controllo duplicati in O(1)
+                    if (!activeVehicleIDs.contains(vehicleID)) {
+                        String arrivalLane = parts[2].trim().toLowerCase();
+                        String turningIntention = parts[3].trim().toLowerCase();
+                        long timestamp;
+                        try {
+                            timestamp = Long.parseLong(parts[4].trim());
+                        } catch (NumberFormatException e) {
+                            timestamp = System.currentTimeMillis();
+                        }
+                        int priority;
+                        try {
+                            priority = Integer.parseInt(parts[5].trim());
+                        } catch (NumberFormatException e) {
+                            priority = 0;
+                        }
+                        Request newReq = new Request(vehicleID, arrivalLane, turningIntention, timestamp, priority);
                         pendingRequests.add(newReq);
+                        activeVehicleIDs.add(vehicleID);
                         System.out.println("IntersectionAgent: richiesta aggiunta da " + vehicleID + " -> " + newReq);
                     } else {
                         System.out.println("IntersectionAgent: richiesta già presente per " + vehicleID);
@@ -123,8 +129,7 @@ public class IntersectionAgent extends Agent {
         @Override
         protected void onTick() {
             long now = System.currentTimeMillis();
-
-            // Rimuovi eventuali currentRequests scadute
+            // Controllo timeout sulle richieste correnti
             Iterator<Request> it = currentRequests.iterator();
             while (it.hasNext()) {
                 Request req = it.next();
@@ -132,35 +137,28 @@ public class IntersectionAgent extends Agent {
                     System.out.println("IntersectionAgent: Timeout per " + req.vehicleID + " (rimosso da currentRequests).");
                     sendEnd(req.vehicleID);
                     it.remove();
+                    activeVehicleIDs.remove(req.vehicleID);
                 }
             }
-
-            // Ordina le richieste pendenti: priorità decrescente, se uguale per timestamp crescente
-            Collections.sort(pendingRequests, new Comparator<Request>() {
-                @Override
-                public int compare(Request r1, Request r2) {
-                    if (r2.priority != r1.priority) {
-                        return Integer.compare(r2.priority, r1.priority);
-                    }
-                    return Long.compare(r1.timestamp, r2.timestamp);
-                }
-            });
-
-            // Se non abbiamo alcuna richiesta autorizzata e ci sono richieste pendenti, autorizza la prima
+            
+            // Se non abbiamo richieste correnti, autorizziamo la richiesta in testa
             if (currentRequests.isEmpty() && !pendingRequests.isEmpty()) {
-                Request first = pendingRequests.remove(0);
-                currentRequests.add(first);
-                sendGo(first.vehicleID);
-                System.out.println("IntersectionAgent: autorizzato " + first.vehicleID + " (p=" + first.priority + ").");
+                Request first = pendingRequests.poll();
+                if (first != null) {
+                    currentRequests.add(first);
+                    sendGo(first.vehicleID);
+                    System.out.println("IntersectionAgent: autorizzato " + first.vehicleID + " (p=" + first.priority + ").");
+                }
             }
-
-            // Se abbiamo una sola richiesta autorizzata e ce ne sono altre pendenti,
-            // prova ad autorizzare (in aggiunta) una seconda richiesta se compatibile
+            
+            // Se abbiamo una sola richiesta autorizzata, proviamo ad aggiungere una seconda compatibile
             if (currentRequests.size() == 1 && !pendingRequests.isEmpty()) {
-                for(int i=0; i< Math.min(2, pendingRequests.size()); i++){
-                    Request candidate = pendingRequests.get(i);
+                // Iteriamo sulla coda (eventualmente potremmo scorrere la PriorityQueue copiandola in una lista temporanea)
+                Iterator<Request> itr = pendingRequests.iterator();
+                while (itr.hasNext()) {
+                    Request candidate = itr.next();
                     if (canGoTogether(currentRequests.get(0), candidate)) {
-                        pendingRequests.remove(i);
+                        itr.remove();
                         currentRequests.add(candidate);
                         sendGo(candidate.vehicleID);
                         System.out.println("IntersectionAgent: autorizzato concomitantemente " + candidate.vehicleID +
@@ -169,17 +167,21 @@ public class IntersectionAgent extends Agent {
                     }
                 }
             }
-
-            // Se abbiamo già due richieste autorizzate, non facciamo altro finché non ne scade almeno una.
+            // Se ci sono già 2 autorizzati, attendiamo ulteriori rimozioni.
         }
     }
-
 /**
  * Determina se due veicoli possono procedere contemporaneamente, considerando sia
  * la loro direzione di arrivo (arrivalLane) sia l'intenzione (turningIntention).
  */
 private boolean canGoTogether(Request r1, Request r2) {
-    // Caso base: entrambi vanno dritti
+
+    //Caso base: se due veicoli vengono dalla stessa corsia, possono andare uno dopo l'altro, le loro strade non si incroceranno mai
+    if (r1.arrivalLane.equalsIgnoreCase(r2.arrivalLane)) {
+        return true;
+    }
+    
+    // Caso in cui entrambi vadano dritti
     if (r1.turningIntention.equals("straight") && r2.turningIntention.equals("straight")) {
         if ((r1.arrivalLane.equals("east") && r2.arrivalLane.equals("west")) ||
             (r1.arrivalLane.equals("west") && r2.arrivalLane.equals("east")) ||
