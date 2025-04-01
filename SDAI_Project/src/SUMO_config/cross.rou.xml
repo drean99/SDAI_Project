@@ -1,65 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <routes>
-    <!-- Definizione di un tipo di veicolo di base -->
-    <vType id="carRed" vClass="passenger" color="1,0,0" accel="2.6" decel="4.5" length="5.0" 
-           minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
+    <!-- Definizione dei tipi di veicolo -->
+    <vType id="aggressiveCar" color="1,0.65,0" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
+    <vType id="normal_green" color="0,1,0" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
+    <vType id="normal_blue"  color="0,0,1" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
+    <vType id="normal_red"   color="1,0,0"   accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
 
-    <vType id="carGreen" vClass="passenger" color="0,1,0" accel="2.6" decel="4.5" length="5.0" 
-           minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
+    <!-- Definizione delle rotte -->
+    <!-- r1: J8 -> J0 -> J1 -> J5 -> J7 -->
+    <route id="r1" edges="E7 E0 E4 E6"/>
+    <!-- r2: J7 -> J5 -> J1 -> J0 -> J8 -->
+    <route id="r2" edges="-E6 -E4 -E0 -E7"/>
+    <!-- r3: J2 -> J0 -> J1 -> J5 -> J7 -->
+    <route id="r3" edges="-E1 E0 E4 E6"/>
+    <!-- r4: J8 -> J0 -> J1 -> J5 -> J6 -->
+    <route id="r4" edges="E7 E0 E4 -E5"/>
+    <!-- r5: J6 -> J5 -> J1 -> J0 -> J8 -->
+    <route id="r5" edges="E5 -E4 -E0 -E7"/>
 
-    <vType id="carBlue" vClass="passenger" color="0,0,1" accel="2.6" decel="4.5" length="5.0" 
-           minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
+    <!-- Definizione dei veicoli -->
+    <!-- Gruppo 0 (depart=0): 5 veicoli, con 1 aggressivo su r1 -->
+    <vehicle id="vA1" type="aggressiveCar" route="r1" depart="0"/>
+    <vehicle id="veh1" type="normal_green" route="r2" depart="0"/>
+    <vehicle id="veh2" type="normal_blue"  route="r3" depart="0"/>
+    <vehicle id="veh3" type="normal_red"   route="r4" depart="0"/>
+    <vehicle id="veh4" type="normal_green" route="r5" depart="0"/>
 
-    <!-- Definizione di un tipo di veicolo molto aggressivo-->
-    <vType id="aggressiveCar" vClass="passenger" color="255,162,0" accel="3.6" decel="5.5" length="5.0" 
-           minGap="1.8" maxSpeed="16.9" sigma="0.6"/>
+    <!-- Gruppo 1 (depart=1): 5 veicoli, con 1 aggressivo su r2 -->
+    <vehicle id="veh5" type="normal_blue"  route="r1" depart="1"/>
+    <vehicle id="vA2" type="aggressiveCar" route="r2" depart="1"/>
+    <vehicle id="veh6" type="normal_red"   route="r3" depart="1"/>
+    <vehicle id="veh7" type="normal_green" route="r4" depart="1"/>
+    <vehicle id="veh8" type="normal_blue"  route="r5" depart="1"/>
 
-   <!-- Definizione delle rotte -->
+    <!-- Gruppo 2 (depart=2): 5 veicoli, con 1 aggressivo su r3 -->
+    <vehicle id="veh9"  type="normal_red"   route="r1" depart="2"/>
+    <vehicle id="veh10" type="normal_green" route="r2" depart="2"/>
+    <vehicle id="vA3"  type="aggressiveCar"   route="r3" depart="2"/>
+    <vehicle id="veh11" type="normal_blue"  route="r4" depart="2"/>
+    <vehicle id="veh12" type="normal_red"   route="r5" depart="2"/>
 
-       <!-- r1: da ovest (B2) a est (D2) -->
-       <route id="r1" edges="B2C2 C2D2"/>
-       <!-- r1Curva: da ovest (B2) a sud (C1) -->
-       <route id="r1Curva" edges="B2C2 C2C1"/>
-       <!-- r2: da est (D2) a ovest (B2) -->
-       <route id="r2" edges="D2C2 C2B2"/>
-       <!-- r3: da sud (C1) a nord (C3) -->
-       <route id="r3" edges="C1C2 C2C3"/>
-       <!-- r4: da nord (C3) a sud (C1) -->
-       <route id="r4" edges="C3C2 C2C1"/>
-       <!-- Nuove rotte -->
-       <!-- r5: da est (D2) a nord (C3) -->
-       <route id="r5" edges="D2C2 C2C3"/>
-       <!-- r6: da sud (C1) a est (D2) -->
-       <route id="r6" edges="C1C2 C2D2"/>
-       <!-- r7: da nord (C3) a ovest (B2) -->
-       <route id="r7" edges="C3C2 C2B2"/>
-       <!-- r8: da ovest (B2) a nord (C3) -->
-       <route id="r8" edges="B2C2 C2C3"/>
-
-       <!-- Definizione dei veicoli non aggressivi (v1..v8) -->
-       <vehicle id="v1" type="carRed" route="r1" depart="0" departLane="0" departSpeed="max"/>
-       <vehicle id="v2" type="carGreen" route="r1Curva" depart="0" departLane="0" departSpeed="max"/>
-       <vehicle id="v3" type="carBlue" route="r2" depart="0" departLane="0" departSpeed="max"/>
-       <vehicle id="v4" type="carBlue" route="r3" depart="0" departLane="0" departSpeed="max"/>
-       <vehicle id="v5" type="carRed" route="r4" depart="2" departLane="0" departSpeed="max"/>
-       <vehicle id="v6" type="carGreen" route="r5" depart="2" departLane="0" departSpeed="max"/>
-       <vehicle id="v7" type="carBlue" route="r6" depart="2" departLane="0" departSpeed="max"/>
-       <vehicle id="v8" type="carBlue" route="r7" depart="2" departLane="0" departSpeed="max"/>
-       <vehicle id="v9" type="carRed" route="r8" depart="3" departLane="0" departSpeed="max"/>
-       <!-- Veicolo aggressivo (vA1) -->
-       <vehicle id="vA1" type="aggressiveCar" route="r4" depart="3" departLane="0" departSpeed="max"/>
-
-       <!-- Definizione dei veicoli non aggressivi (v9..v19) -->
-       <vehicle id="v10" type="carGreen" route="r1" depart="3" departLane="0" departSpeed="max"/>
-       <vehicle id="v11" type="carBlue" route="r1Curva" depart="3" departLane="0" departSpeed="max"/>
-       <vehicle id="v12" type="carBlue" route="r2" depart="4" departLane="0" departSpeed="max"/>
-       <vehicle id="v13" type="carRed" route="r3" depart="4" departLane="0" departSpeed="max"/>
-       <vehicle id="v14" type="carGreen" route="r4" depart="4" departLane="0" departSpeed="max"/>
-       <vehicle id="v15" type="carBlue" route="r5" depart="4" departLane="0" departSpeed="max"/>
-       <vehicle id="v16" type="carBlue" route="r6" depart="5" departLane="0" departSpeed="max"/>
-       <vehicle id="v17" type="carRed" route="r7" depart="5" departLane="0" departSpeed="max"/>
-       <vehicle id="v18" type="carGreen" route="r8" depart="5" departLane="0" departSpeed="max"/>
-       <vehicle id="v19" type="carBlue" route="r1" depart="5" departLane="0" departSpeed="max"/>
-
-
+    <!-- Gruppo 3 (depart=3): 3 veicoli (solo normali) su r1, r2 e r3 -->
+    <vehicle id="veh13" type="normal_green" route="r1" depart="3"/>
+    <vehicle id="veh14" type="normal_blue"  route="r2" depart="3"/>
+    <vehicle id="veh15" type="normal_red"   route="r3" depart="3"/>
 </routes>

@@ -66,7 +66,7 @@ public class VehicleAggressiveAgent extends Agent {
                     System.out.println(vehicleID + " si è avvicinato troppo senza autorizzazione: rallento a 7.0.");
                 }
                 // Se il veicolo ha attraversato l'incrocio (oltre NEW_EXIT_THRESHOLD), invio PASSED anche se non ha ricevuto GO
-                if (distance > EXIT_THRESHOLD && !passedMessageSent) {
+                if (distance > EXIT_THRESHOLD && !passedMessageSent && requestSent) {
                     System.out.println(vehicleID + " ha attraversato l'incrocio - invio PASSED.");
                     inviaMessaggioPassato(inter.getAgentName());
                     passedMessageSent = true;

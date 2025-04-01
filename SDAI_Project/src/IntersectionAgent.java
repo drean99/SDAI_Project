@@ -11,7 +11,7 @@ import java.util.PriorityQueue;
 
 public class IntersectionAgent extends Agent {
 
-    private final long TIMEOUT = 10000; // Timeout in millisecondi per considerare scaduta una richiesta
+    private final long TIMEOUT = 9000; // Timeout in millisecondi per considerare scaduta una richiesta
  private PriorityQueue<Request> pendingRequests = new PriorityQueue<>(new Comparator<Request>() {
         @Override
         public int compare(Request r1, Request r2) {
