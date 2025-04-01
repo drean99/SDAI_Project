@@ -37,7 +37,7 @@ public class VehicleAgent extends Agent {
     protected void setup() {
         vehicleID = getLocalName();
         System.out.println(vehicleID + " - setup completato.");
-        addBehaviour(new CheckIntersectionBehaviour(this, 300));
+        addBehaviour(new CheckIntersectionBehaviour(this, 200));
         addBehaviour(new IntersectionResponseBehaviour());
     }
     
@@ -87,14 +87,9 @@ public class VehicleAgent extends Agent {
         }
     }
 
-    private class IntersectionResponseBehaviour extends TickerBehaviour {
-        public IntersectionResponseBehaviour() {
-            // Verifica le risposte ogni 500ms
-            super(VehicleAgent.this, 500);
-        }
-        
+    private class IntersectionResponseBehaviour extends CyclicBehaviour  {
         @Override
-        protected void onTick() {
+        public void action() {
             ACLMessage msg = receive();
             if (msg != null) {
                 String content = msg.getContent().trim();

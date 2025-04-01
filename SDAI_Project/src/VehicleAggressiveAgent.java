@@ -4,6 +4,7 @@ import Utility.Environment;
 import Utility.Intersection;
 import Utility.SumoConnector;
 import jade.core.Agent;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.lang.acl.ACLMessage;
 
@@ -82,13 +83,9 @@ public class VehicleAggressiveAgent extends Agent {
     }
     
     // Comportamento per ascoltare le risposte dall'agente Intersection
-    private class IntersectionResponseBehaviour extends TickerBehaviour {
-        public IntersectionResponseBehaviour() {
-            super(VehicleAggressiveAgent.this, 500);
-        }
-        
+    private class IntersectionResponseBehaviour extends CyclicBehaviour  {
         @Override
-        protected void onTick() {
+        public void action() {
             ACLMessage msg = receive();
             if (msg != null) {
                 String content = msg.getContent().trim();
