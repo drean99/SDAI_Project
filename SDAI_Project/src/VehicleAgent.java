@@ -72,7 +72,7 @@ public class VehicleAgent extends Agent {
                     hasPassed = false;
                 }
                 // Se il veicolo si è avvicinato troppo (entro STOP_THRESHOLD) e non ha ricevuto GO, forzalo a fermarsi
-                if (distance <= STOP_THRESHOLD && !canCross) {
+                if (distance <= STOP_THRESHOLD && !canCross && !hasPassed) {
                     SumoConnector.changeSpeed(vehicleID, 0.0);
                     System.out.println(vehicleID + " si è avvicinato troppo all'incrocio senza GO: mi fermo");
                 }
