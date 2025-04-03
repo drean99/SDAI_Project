@@ -38,16 +38,3 @@ Communication among agents is based on ACL (Agent Communication Language) messag
 [TraCI Documentation](https://github.com/egueli/TraCI4J)
 
 * Java (JDK 11 or later)
-
-## 📁 Project Structure
-
-project-root/
-├── src/
-│   ├── Utility/ (support classes)
-│   ├── SUMO_config/ (SUMO XML configuration files)
-│   ├── IntersectionAgent.java
-│   ├── VehicleAgent.java
-│   ├── VehicleAggressiveAgent.java
-│   ├── SimStepAgent.java
-│   └── TestSimulation.java
-└── README.md
