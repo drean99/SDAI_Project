@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <routes>
     <!-- Definizione dei tipi di veicolo -->
-    <vType id="aggressiveCar" color="1,0.65,0" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
-    <vType id="normal_green" color="0,1,0" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
-    <vType id="normal_blue"  color="0,0,1" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
-    <vType id="normal_red"   color="1,0,0"   accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9"/>
+    <vType id="aggressiveCar" vClass="passenger" color="255,162,0" accel="3.6" decel="5.5" length="5.0" minGap="1.8" maxSpeed="16.9" sigma="0.6"/>
+    <vType id="normal_green"  vClass="passenger" color="0,1,0"     accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9" sigma="0.4"/>
+    <vType id="normal_blue"   vClass="passenger" color="0,1,1"     accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9" sigma="0.4"/>
+    <vType id="normal_red"    vClass="passenger" color="1,0,0"     accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="13.9" sigma="0.4"/>
 
     <!-- Definizione delle rotte -->
     <!-- r1: J8 -> J0 -> J1 -> J5 -> J7 -->

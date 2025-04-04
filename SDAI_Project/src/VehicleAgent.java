@@ -30,7 +30,7 @@ public class VehicleAgent extends Agent {
     private static final double APPROACH_THRESHOLD = 22.0;
     private static final double STOP_THRESHOLD = 12.0;
     // Nuova soglia per determinare se il veicolo ha superato l'incrocio
-    private static final double EXIT_THRESHOLD = 13.0;
+    private static final double EXIT_THRESHOLD = 14.0;
 
     
     @Override

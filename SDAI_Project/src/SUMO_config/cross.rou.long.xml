@@ -7,7 +7,7 @@
     <vType id="carGreen" vClass="passenger" color="0,1,0" accel="2.6" decel="4.5" length="5.0" 
            minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
 
-    <vType id="carBlue" vClass="passenger" color="0,0,1" accel="2.6" decel="4.5" length="5.0" 
+    <vType id="carBlue" vClass="passenger" color="0,1,1" accel="2.6" decel="4.5" length="5.0" 
            minGap="2.5" maxSpeed="13.9" sigma="0.5"/>
 
     <!-- Definizione di un tipo di veicolo molto aggressivo-->
@@ -39,8 +39,8 @@
        <!-- Definizione dei veicoli non aggressivi (v1..v8) -->
        <vehicle id="v1" type="carRed" route="r1" depart="0" departLane="0" departSpeed="max"/>
        <vehicle id="v2" type="carGreen" route="r1Curva" depart="0" departLane="0" departSpeed="max"/>
-       <vehicle id="v3" type="carBlue" route="r2" depart="0" departLane="0" departSpeed="max"/>
-       <vehicle id="v4" type="carBlue" route="r3" depart="0" departLane="0" departSpeed="max"/>
+       <vehicle id="v3" type="carBlue" route="r2" depart="1" departLane="0" departSpeed="max"/>
+       <vehicle id="v4" type="carBlue" route="r3" depart="1" departLane="0" departSpeed="max"/>
        <vehicle id="v5" type="carRed" route="r4" depart="2" departLane="0" departSpeed="max"/>
        <vehicle id="v6" type="carGreen" route="r5" depart="2" departLane="0" departSpeed="max"/>
        <vehicle id="v7" type="carBlue" route="r6" depart="2" departLane="0" departSpeed="max"/>
