@@ -1,1 +1,1 @@
-http://BombaSuperSonica:7778/acc
+http://<your_pc>:7778/acc
