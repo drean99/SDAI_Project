@@ -11,7 +11,7 @@ import java.util.PriorityQueue;
 
 public class IntersectionAgent extends Agent {
 
-    private final long TIMEOUT = 9000; // Timeout in millisecondi per considerare scaduta una richiesta
+    private final long TIMEOUT = 10000; // Timeout in millisecondi per considerare scaduta una richiesta
  private PriorityQueue<Request> pendingRequests = new PriorityQueue<>(new Comparator<Request>() {
         @Override
         public int compare(Request r1, Request r2) {
@@ -89,7 +89,7 @@ public class IntersectionAgent extends Agent {
                         return;
                     }
                     String vehicleID = parts[1].trim();
-                    // Controllo duplicati in O(1)
+                    // Controllo duplicati
                     if (!activeVehicleIDs.contains(vehicleID)) {
                         String arrivalLane = parts[2].trim().toLowerCase();
                         String turningIntention = parts[3].trim().toLowerCase();
@@ -153,7 +153,7 @@ public class IntersectionAgent extends Agent {
             
             // Se abbiamo una sola richiesta autorizzata, proviamo ad aggiungere una seconda compatibile
             if (currentRequests.size() == 1 && !pendingRequests.isEmpty()) {
-                // Iteriamo sulla coda (eventualmente potremmo scorrere la PriorityQueue copiandola in una lista temporanea)
+                // Iteriamo sulla coda delle richieste pendenti per trovare una compatibile
                 Iterator<Request> itr = pendingRequests.iterator();
                 while (itr.hasNext()) {
                     Request candidate = itr.next();
@@ -288,18 +288,9 @@ private String getNext(String direction) {
     }
 }
 
-
-private boolean containsRequest(String vehicleID) {
-    for (Request req : pendingRequests) {
-        if (req.vehicleID.equalsIgnoreCase(vehicleID))
-            return true;
-    }
-    for (Request req : currentRequests) {
-        if (req.vehicleID.equalsIgnoreCase(vehicleID))
-            return true;
-    }
-    return false;
-}
+/**
+ * Invia un messaggio di timeout (END) al veicolo specificato.
+ */
 
 private void sendEnd(String vehicleID) {
     ACLMessage endMsg = new ACLMessage(ACLMessage.INFORM);
@@ -309,6 +300,9 @@ private void sendEnd(String vehicleID) {
     System.out.println("IntersectionAgent: inviato END a " + vehicleID);
 }
 
+/**
+ * Invia un messaggio di autorizzazione (GO) al veicolo specificato.
+ */
 private void sendGo(String vehicleID) {
         ACLMessage goMsg = new ACLMessage(ACLMessage.CONFIRM);
         goMsg.addReceiver(new jade.core.AID(vehicleID, jade.core.AID.ISLOCALNAME));
